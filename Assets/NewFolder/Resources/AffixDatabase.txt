@@ -1,0 +1,13 @@
+ID,Type,AffixName,StatType,StatValue
+1,Prefix,훔쳐온,Speed,5
+2,Prefix,도둑질한,Attack,10
+3,Prefix,설탕 도금?,Defense,15
+4,Prefix,쌔빈,Attack,20
+5,Prefix,럭가네집 ,Attack,30
+6,Prefix,양이쓰던 ,Attack,30
+7,Prefix,메구밍이 준 ,Attack,30
+8,Prefix,셀렉트가 선물한 ,Attack,30
+9,Prefix,두고가 만든 ,Attack,30
+101,Suffix,아무튼좋은거,Speed,10
+102,Suffix,버릴거,Attack,25
+103,Suffix,남주긴싫은,Defense,10
