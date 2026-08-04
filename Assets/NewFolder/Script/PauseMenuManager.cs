@@ -6,7 +6,7 @@ public class PauseMenuManager : MonoBehaviour
     [Header("UI 패널")]
     public GameObject pausePanel;         // 메인 옵션(일시정지) 창
     public GameObject quitConfirmPanel;   // 종료 확인 창
-    public GameObject gachaPanel;         // ⭐ [추가] 방금 만든 가챠 상점 창
+    public GameObject gachaPanel;         // 가챠 상점 창
 
     private bool isPaused = false;
 
@@ -15,23 +15,37 @@ public class PauseMenuManager : MonoBehaviour
         // ESC 키를 눌렀을 때 작동합니다.
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // 0. ⭐ 만약 가챠 창이 열려있다면, 가챠 창을 닫고 일시정지 메뉴로 돌아갑니다.
+            // ⭐ 1순위: 인벤토리 창이 열려있다면 가장 먼저 닫습니다!
+            if (InventoryManager.instance != null && 
+                InventoryManager.instance.inventoryPanel != null && 
+                InventoryManager.instance.inventoryPanel.activeSelf)
+            {
+                InventoryManager.instance.CloseInventoryUI();
+                return; // 🛑 인벤토리만 닫고 아래 코드는 더 이상 실행하지 않음
+            }
+
+            // ⭐ 2순위: 가챠 창이 열려있다면, 가챠 창을 닫고 일시정지 메뉴로 돌아갑니다.
             if (gachaPanel != null && gachaPanel.activeSelf)
             {
                 CloseGachaAndReturn();
-                return;
+                return; // 🛑 가챠 창만 닫고 실행 종료
             }
 
-            // 1. 만약 '종료 확인 창'이 떠 있는 상태에서 ESC를 누르면 확인 창만 닫습니다.
+            // ⭐ 3순위: '종료 확인 창'이 떠 있는 상태에서 ESC를 누르면 확인 창만 닫습니다.
             if (quitConfirmPanel.activeSelf)
             {
                 CancelQuit();
+                return; // 🛑 확인 창만 닫고 실행 종료
             }
-            // 2. 그 외의 경우엔 일시정지 상태를 토글(Toggle)합니다.
-            else
+            
+            // ⭐ 4순위: 위에 열려있는 팝업이 아무것도 없다면 일시정지 상태를 토글합니다.
+            if (isPaused) 
             {
-                if (isPaused) ResumeGame();
-                else PauseGame();
+                ResumeGame();
+            }
+            else 
+            {
+                PauseGame();
             }
         }
     }
@@ -39,18 +53,22 @@ public class PauseMenuManager : MonoBehaviour
     // 🔴 [내부 로직] 게임 일시정지
     private void PauseGame()
     {
-        pausePanel.SetActive(true); // 옵션 창 켜기
-        Time.timeScale = 0f;        // 게임 세상의 시간을 완전히 멈춥니다 (0배속)
+        pausePanel.SetActive(true); 
+        Time.timeScale = 0f;        
         isPaused = true;
     }
 
     // 🟢 1. 게임 다시 진행 (버튼용)
     public void ResumeGame()
     {
-        pausePanel.SetActive(false); // 옵션 창 끄기
-        if (gachaPanel != null) gachaPanel.SetActive(false); // 가챠창도 안전하게 끄기
+        pausePanel.SetActive(false); 
+        if (gachaPanel != null) gachaPanel.SetActive(false); 
+        
+        // ⭐ 게임 재개 시 인벤토리 창도 안전하게 강제로 꺼줍니다.
+        if (InventoryManager.instance != null) InventoryManager.instance.CloseInventoryUI(); 
+        
         quitConfirmPanel.SetActive(false);
-        Time.timeScale = 1f;         // 시간을 다시 정상(1배속)으로 되돌립니다.
+        Time.timeScale = 1f;         
         isPaused = false;
     }
 
@@ -59,8 +77,8 @@ public class PauseMenuManager : MonoBehaviour
     {
         if (gachaPanel != null)
         {
-            gachaPanel.SetActive(true);  // ⭐ 가챠 창을 켜고
-            pausePanel.SetActive(false); // ⭐ 기존 일시정지 메뉴 창은 잠시 숨깁니다.
+            gachaPanel.SetActive(true);  
+            pausePanel.SetActive(false); 
         }
     }
 
@@ -74,7 +92,7 @@ public class PauseMenuManager : MonoBehaviour
     // 🔵 3. 메인 화면으로 돌아가기 (버튼용)
     public void GoToMainMenu()
     {
-        Time.timeScale = 1f; // 🚨 [매우 중요] 씬을 넘어가기 전에 반드시 시간을 1로 돌려놔야 메인화면이 멈추지 않습니다!
+        Time.timeScale = 1f; 
         SceneManager.LoadScene("MainMenuScene"); 
     }
 
@@ -95,7 +113,6 @@ public class PauseMenuManager : MonoBehaviour
     {
         Debug.Log("게임을 완전히 종료합니다.");
         
-        // ⭐ 유니티 에디터와 실제 빌드 버전 모두 완벽 종료되도록 보완된 코드
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else

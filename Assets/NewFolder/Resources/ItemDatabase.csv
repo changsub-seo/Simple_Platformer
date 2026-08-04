@@ -1,5 +1,47 @@
-ID,ItemName,IconName,DropWeight,Description
-1,컴퓨터 본체,bonche,10,게임을 원활하게 돌려줄 최고급 컴퓨터 본체.
-2,게이밍 키보드,keyboard,10,화려한 네온 LED가 빛나는 타건감 좋은 키보드.
-3,레이저 마우스,mouse,10,레이저 마우스의 좋은점은 마우스 자체 매크로로 아이온을 편하게 할 수 있다는것이다.
-4,본체,bonche,10,산지 아직 2년밖에 안된 본체입니다
+ID,ItemName,IconName,DropWeight,Description,ItemType,EquipSlot,HP,MP,AD,AP,MS
+101,사이버펑크 고글,Head_1,20,어두운 곳에서도 시야를 확보해 주는 네온빛 고글.,Equipment,Head,NULL,20,NULL,NULL,NULL
+102,화이트레이의 리본,Head_2,15,머리에 가볍게 묶을 수 있는 귀여운 붉은색 리본.,Equipment,Head,NULL,10,NULL,NULL,NULL
+103,방탄 헬멧,Head_3,20,물리적인 충격을 튕겨내는 단단한 헬멧.,Equipment,Head,NULL,NULL,NULL,NULL,NULL
+104,홀로그램 펜던트,neck_1,15,푸른빛 문양이 공중에 떠오르는 신비한 목걸이.,Equipment,Neck,NULL,30,NULL,NULL,NULL
+105,초전도체 목걸이,neck_2,20,미세한 전류가 흘러 반사 신경을 높여주는 목걸이.,Equipment,Neck,NULL,25,NULL,NULL,NULL
+106,낡은 은목걸이,neck_3,30,오래된 디자인이지만 묘한 마력이 느껴진다.,Equipment,Neck,NULL,40,NULL,NULL,NULL
+107,냥 코인 골드 링,ring_1,10,행운을 불러오는 반짝이는 금빛 반지.,Equipment,Ring,NULL,15,NULL,NULL,NULL
+108,네온 다이아 링,ring_2,15,어둠 속에서 은은하게 빛나는 보석 반지.,Equipment,Ring,NULL,20,NULL,NULL,NULL
+109,크롬 도금 반지,ring_3,30,공장제 부품을 가공해서 만든 튼튼한 반지.,Equipment,Ring,NULL,NULL,NULL,NULL,NULL
+110,홀로그램 링,ring_4,20,착용자의 기분에 따라 색이 변하는 반지.,Equipment,Ring,NULL,10,NULL,NULL,NULL
+111,티타늄 반지,ring_5,25,절대 부서지지 않는 강도를 자랑하는 반지.,Equipment,Ring,NULL,NULL,NULL,NULL,NULL
+112,해커의 링,ring_6,15,단말기 접속 코드가 내장된 스마트 반지.,Equipment,Ring,NULL,50,NULL,NULL,NULL
+113,강철 건틀릿,glove_1,20,묵직하고 단단한 철제 장갑.,Equipment,Gloves,NULL,NULL,NULL,NULL,NULL
+114,화이트레이의 레이스 장갑,glove_2,15,손에 부드럽게 감기는 고급스러운 레이스 장갑.,Equipment,Gloves,NULL,20,NULL,NULL,NULL
+115,사이버네틱 핸드,glove_3,10,팔의 근력을 기계적으로 증폭시켜 주는 장치.,Equipment,Gloves,NULL,NULL,NULL,NULL,NULL
+116,전술형 요대,waist_1,25,다양한 도구를 매달 수 있는 튼튼한 허리띠.,Equipment,Waist,NULL,NULL,NULL,NULL,NULL
+117,중력 제어 벨트,waist_2,10,낙하 충격을 줄여주는 특수 장치가 달린 벨트.,Equipment,Waist,NULL,NULL,NULL,NULL,NULL
+118,가죽 벨트,waist_3,40,아주 평범하고 질긴 가죽으로 만든 벨트.,Equipment,Waist,NULL,NULL,NULL,NULL,NULL
+119,네온 후드티,top_1,25,뒷면에 화려한 로고가 빛나는 편안한 후드.,Equipment,Top,50,NULL,NULL,NULL,NULL
+120,방탄 방직 재킷,top_2,15,가볍지만 총알도 막아내는 특수 소재 재킷.,Equipment,Top,70,NULL,NULL,NULL,NULL
+121,낡은 티셔츠,top_3,50,여기저기 해진 평범한 면 티셔츠.,Equipment,Top,20,NULL,NULL,NULL,NULL
+122,카고 팬츠,bot_1,30,주머니가 많아 수납이 넉넉한 바지.,Equipment,Bottom,40,NULL,NULL,NULL,NULL
+123,사이버펑크 데님,bot_2,20,야광 도료가 묻어있는 힙한 청바지.,Equipment,Bottom,55,NULL,NULL,NULL,NULL
+124,전술용 반바지,bot_3,30,움직임이 아주 자유롭고 시원한 바지.,Equipment,Bottom,30,NULL,NULL,NULL,NULL
+125,화이트레이의 수면 잠옷,overall_1,30,포근하게 잠들 수 있는 잠옷으로 상하의가 붙어있다.,Equipment,Overall,100,NULL,NULL,NULL,NULL
+126,은신용 강화 슈트,overall_2,10,빛을 굴절시켜 몸을 숨기기 좋은 전신 슈트.,Equipment,Overall,120,NULL,NULL,NULL,NULL
+127,정비공의 작업복,overall_3,40,기름때가 묻어있는 튼튼한 일체형 작업복.,Equipment,Overall,150,NULL,NULL,NULL,NULL
+128,스마트 밴드,wrist_1,30,맥박과 상태를 체크해 주는 유용한 밴드.,Equipment,Wrist,NULL,10,NULL,NULL,NULL
+129,강철 손목 보호대,wrist_2,25,손목으로 날아오는 공격을 막아주는 보호대.,Equipment,Wrist,NULL,NULL,NULL,NULL,NULL
+130,홀로-팔찌,wrist_3,20,가상 디스플레이를 띄울 수 있는 장치.,Equipment,Wrist,NULL,15,NULL,NULL,NULL
+131,가벼운 러닝화,shoe_1,30,깃털처럼 가벼워 발걸음이 빨라지는 운동화.,Equipment,Shoes,NULL,NULL,NULL,NULL,15
+132,반중력 부츠,shoe_2,10,점프력을 획기적으로 늘려주는 특수 부츠.,Equipment,Shoes,NULL,NULL,NULL,NULL,25
+133,전술용 군화,shoe_3,25,어떤 지형에서도 미끄러지지 않는 신발.,Equipment,Shoes,NULL,NULL,NULL,NULL,10
+134,고주파 진동검,wep1_1,15,칼날이 미세하게 진동하여 무엇이든 베어내는 한손검.,Equipment,OneHandWeapon,NULL,NULL,35,10,NULL
+135,에너지 피스톨,wep1_2,20,에너지 탄환을 가볍게 쏘아내는 한손 무기.,Equipment,OneHandWeapon,NULL,NULL,20,40,NULL
+136,사이버 단검,wep1_3,25,휴대하기 좋고 날카로운 단검.,Equipment,OneHandWeapon,NULL,NULL,25,NULL,NULL
+137,거대한 네온 해머,wep2_1,10,양손으로 들어야 하는 파괴적이고 무거운 둔기.,Equipment,TwoHandWeapon,NULL,NULL,80,NULL,NULL
+138,펄스 라이플,wep2_2,15,연사력이 뛰어난 양손용 소총.,Equipment,TwoHandWeapon,NULL,NULL,45,50,NULL
+139,대검,wep2_3,20,사람의 키만 한 거대한 양손 검.,Equipment,TwoHandWeapon,NULL,NULL,65,NULL,NULL
+201,에너지 드링크,drink_1,50,즉시 체력을 30 회복하고 사라지는 달콤한 음료.,Consumable,NULL,NULL,NULL,NULL,NULL,NULL
+202,휴대용 구급킷,medkit_1,20,사용 시 쉴드를 100% 충전시켜 주는 1회용 소모품.,Consumable,NULL,NULL,NULL,NULL,NULL,NULL
+203,부스트 알약,pill_1,30,일정 시간 동안 이동속도를 올려주는 소모품.,Consumable,NULL,NULL,NULL,NULL,NULL,NULL
+301,사이버펑크 데칼,decal_1,10,장비에 부착하여 새로운 무작위 옵션을 부여하는 홀로그램 스티커.,Enhancement,NULL,NULL,NULL,NULL,NULL,NULL
+302,초정밀 숫돌,stone_1,15,무기의 기본 공격력 스탯을 한 단계 올려주는 재료.,Enhancement,NULL,NULL,NULL,NULL,NULL,NULL
+303,방어구 강화 칩,chip_1,20,방어구의 성능을 1강 올려주는 시스템 칩.,Enhancement,NULL,NULL,NULL,NULL,NULL,NULL
+404,테스트 만든 아이템,TestIcon_001,100,모든 스텟을 가진 올인원 아이템,Equipment,Ring,6,7,8,9,10
