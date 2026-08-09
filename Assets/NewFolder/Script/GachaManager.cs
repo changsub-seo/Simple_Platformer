@@ -74,6 +74,9 @@ public class GachaManager : MonoBehaviour
     public TextMeshProUGUI resultStats;
     public TextMeshProUGUI resultDesc;
 
+    [Header("기본/특수 아이콘 설정")]
+    public Sprite noIconSprite; // 인스펙터에서 Noicon 이미지 지정용
+
     private GeneratedItem currentDisplayedItem;
     private bool isAltPressed = false;
 
@@ -140,10 +143,8 @@ public class GachaManager : MonoBehaviour
         }
     }
 
-    // ⭐ 장착 부위에 맞는 기본 아이콘 경로를 반환하는 함수
     private string GetDefaultIconPath(string equipSlot)
     {
-        // "ItemIcon/Head", "ItemIcon/Neck" 등과 같이 파일명과 일치하는 경로 생성
         return "ItemIcon/" + equipSlot;
     }
 
@@ -217,7 +218,6 @@ public class GachaManager : MonoBehaviour
             CSVItemData baseItem = GetRandomItem();                
             GeneratedItem finalItem = GenerateItemWithStats(baseItem); 
             
-            // ⭐ 완성된 아이템을 인벤토리 시스템으로 전송
             if (InventoryManager.instance != null)
             {
                 InventoryManager.instance.AddItemToInventory(finalItem);
@@ -354,10 +354,28 @@ public class GachaManager : MonoBehaviour
     {
         currentDisplayedItem = item;
 
-        if (item.baseItem.loadedIcon != null)
+        // ⭐ 가챠 결과 아이콘 처리 (아이콘이 없으면 Noicon 출력)
+        if (resultIcon != null)
         {
-            resultIcon.sprite = item.baseItem.loadedIcon;
+            if (item.baseItem != null && item.baseItem.loadedIcon != null)
+            {
+                resultIcon.sprite = item.baseItem.loadedIcon;
+                resultIcon.enabled = true;
+                resultIcon.color = Color.white;
+            }
+            else if (noIconSprite != null)
+            {
+                resultIcon.sprite = noIconSprite;
+                resultIcon.enabled = true;
+                resultIcon.color = Color.white;
+            }
+            else
+            {
+                resultIcon.sprite = null;
+                resultIcon.enabled = false;
+            }
         }
+
         resultName.text = item.finalName; 
         
         if (item.baseItem.equipSlot != "NULL" && !string.IsNullOrEmpty(item.baseItem.equipSlot))
@@ -381,7 +399,6 @@ public class GachaManager : MonoBehaviour
         resultPopup.SetActive(true);
     }
 
-    // ⭐ 스탯 색상 보정 함수
     private string GetColoredStatString(string statName, int rolled, int min, int max, bool showDetails)
     {
         Color baseColor = Color.white;
