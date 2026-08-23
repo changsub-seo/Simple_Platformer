@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-public class InventorySlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+public class InventorySlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler, IPointerClickHandler
 {
     public Image iconImage;
     public GeneratedItem currentItem;
@@ -89,12 +89,10 @@ public class InventorySlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // ⭐ 1. 좌클릭이 아니면 무조건 드래그 무시 (동시 클릭 버그 원천 차단)
         if (eventData.button != PointerEventData.InputButton.Left) return;
 
         if (currentItem == null || string.IsNullOrEmpty(currentItem.finalName)) return;
 
-        // ⭐ 2. 혹시라도 파괴되지 않은 기존 드래그 아이콘(잔상)이 있다면 찌꺼기 청소
         if (draggingIcon != null)
         {
             Destroy(draggingIcon);
@@ -148,7 +146,6 @@ public class InventorySlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     public void OnDrop(PointerEventData eventData)
     {
-        // ⭐ 드롭 역시 좌클릭일 때만 허용
         if (eventData.button != PointerEventData.InputButton.Left) return;
 
         InventorySlot sourceSlot = eventData.pointerDrag?.GetComponent<InventorySlot>();
@@ -168,6 +165,32 @@ public class InventorySlot : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         else
         {
             InventoryManager.instance.HideTooltip();
+        }
+    }
+
+    // ⭐ 안전장치(Null 체크)가 완벽하게 추가된 우클릭 함수
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            if (currentItem != null && currentItem.baseItem != null)
+            {
+                // itemType이 비어있지 않은지 먼저 검사합니다.
+                if (!string.IsNullOrEmpty(currentItem.baseItem.itemType) && 
+                    currentItem.baseItem.itemType.Trim() == "Equipment")
+                {
+                    bool isEquipped = EquipmentManager.instance.EquipFromInventory(currentItem);
+                    if (isEquipped)
+                    {
+                        ClearSlot();
+                        InventoryManager.instance.HideTooltip();
+                    }
+                }
+                else
+                {
+                    Debug.Log("이 아이템은 장비 타입이 아니거나 데이터가 누락되어 있습니다!");
+                }
+            }
         }
     }
 }

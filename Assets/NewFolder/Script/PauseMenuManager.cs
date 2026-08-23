@@ -7,6 +7,9 @@ public class PauseMenuManager : MonoBehaviour
     public GameObject pausePanel;         // 메인 옵션(일시정지) 창
     public GameObject quitConfirmPanel;   // 종료 확인 창
     public GameObject gachaPanel;         // 가챠 상점 창
+    
+    // ⭐ 새롭게 추가된 캐릭터 장비창(CharacterInfoPanel) 변수
+    public GameObject characterInfoPanel; 
 
     private bool isPaused = false;
 
@@ -15,7 +18,14 @@ public class PauseMenuManager : MonoBehaviour
         // ESC 키를 눌렀을 때 작동합니다.
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            // ⭐ 1순위: 인벤토리 창이 열려있다면 가장 먼저 닫습니다!
+            // ⭐ 0순위: 캐릭터 장비창이 열려있다면 가장 먼저 닫고 일시정지로 돌아갑니다.
+            if (characterInfoPanel != null && characterInfoPanel.activeSelf)
+            {
+                CloseCharacterInfoAndReturn();
+                return; // 🛑 장비창만 닫고 실행 종료
+            }
+
+            // ⭐ 1순위: 인벤토리 창이 열려있다면 닫습니다!
             if (InventoryManager.instance != null && 
                 InventoryManager.instance.inventoryPanel != null && 
                 InventoryManager.instance.inventoryPanel.activeSelf)
@@ -63,6 +73,7 @@ public class PauseMenuManager : MonoBehaviour
     {
         pausePanel.SetActive(false); 
         if (gachaPanel != null) gachaPanel.SetActive(false); 
+        if (characterInfoPanel != null) characterInfoPanel.SetActive(false); // ⭐ 게임 재개 시 장비창도 안전하게 끄기
         
         // ⭐ 게임 재개 시 인벤토리 창도 안전하게 강제로 꺼줍니다.
         if (InventoryManager.instance != null) InventoryManager.instance.CloseInventoryUI(); 
@@ -87,6 +98,23 @@ public class PauseMenuManager : MonoBehaviour
     {
         if (gachaPanel != null) gachaPanel.SetActive(false);
         pausePanel.SetActive(true);
+    }
+
+    // ⭐ 새롭게 추가된 기능: 장비창 열기 (일시정지 메뉴의 장비창 버튼용)
+    public void OpenCharacterInfo()
+    {
+        if (characterInfoPanel != null)
+        {
+            characterInfoPanel.SetActive(true);
+            pausePanel.SetActive(false); // 일시정지 창은 잠깐 숨김
+        }
+    }
+
+    // ⭐ 새롭게 추가된 기능: 장비창 닫기 (장비창의 X버튼용)
+    public void CloseCharacterInfoAndReturn()
+    {
+        if (characterInfoPanel != null) characterInfoPanel.SetActive(false);
+        pausePanel.SetActive(true); // 다시 일시정지 메뉴를 띄워줌
     }
 
     // 🔵 3. 메인 화면으로 돌아가기 (버튼용)

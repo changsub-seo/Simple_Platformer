@@ -1,66 +1,78 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-// ⭐ IBeginDragHandler가 반드시 추가되어야 OnDrag가 정상적으로 발동합니다.
-public class UIDragger : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IDragHandler
+public class UIDragger : MonoBehaviour, IDragHandler, IBeginDragHandler
 {
-    [Header("이동시킬 창 (비워두면 부모가 자동 지정됨)")]
-    public RectTransform targetWindow;
+    [Header("움직일 대상 (보통 창 전체)")]
+    public RectTransform targetPanel; 
 
-    private Canvas canvas;
+    private Vector2 pointerOffset;
+    private Canvas parentCanvas;
+    private RectTransform canvasRectTransform;
 
     void Awake()
     {
-        if (targetWindow == null)
+        // 타겟 패널을 지정하지 않았다면, 기본적으로 부모 오브젝트를 타겟으로 잡습니다.
+        if (targetPanel == null)
+            targetPanel = transform.parent.GetComponent<RectTransform>();
+            
+        parentCanvas = GetComponentInParent<Canvas>();
+        if (parentCanvas != null)
         {
-            targetWindow = transform.parent.GetComponent<RectTransform>();
-        }
-        canvas = GetComponentInParent<Canvas>();
-    }
-
-    public void OnPointerDown(PointerEventData eventData)
-    {
-        // 클릭 시 인벤토리 창을 다른 UI들보다 맨 앞으로 가져옵니다.
-        if (targetWindow != null)
-        {
-            targetWindow.SetAsLastSibling();
+            canvasRectTransform = parentCanvas.transform as RectTransform;
         }
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // 유니티 이벤트 시스템이 드래그를 인식하게 만드는 필수 트리거 (내용은 비워둬도 무방)
+        // 클릭 시 창을 맨 앞으로 가져옵니다. (다른 창들에 가려지지 않게)
+        targetPanel.SetAsLastSibling(); 
+        
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            targetPanel, 
+            eventData.position, 
+            eventData.pressEventCamera, 
+            out pointerOffset);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (targetWindow == null || canvas == null) return;
+        if (targetPanel == null || parentCanvas == null) return;
 
-        // 마우스가 이동한 거리(delta)만큼 해상도 스케일 비율에 맞춰 창을 이동시킵니다.
-        targetWindow.anchoredPosition += eventData.delta / canvas.scaleFactor;
-        
-        // 화면 밖으로 나가지 못하게 막기
-        ClampToWindow();
+        Vector2 localPointerPosition;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRectTransform, 
+            eventData.position, 
+            eventData.pressEventCamera, 
+            out localPointerPosition))
+        {
+            // 1. 마우스를 따라 창 위치 이동
+            targetPanel.localPosition = localPointerPosition - pointerOffset;
+            
+            // 2. 화면 밖으로 나가지 않도록 제한 (Clamping)
+            ClampToWindow();
+        }
     }
 
+    // ⭐ 화면 밖으로 이탈하지 못하게 막는 핵심 함수
     private void ClampToWindow()
     {
-        Vector3[] canvasCorners = new Vector3[4];
         Vector3[] panelCorners = new Vector3[4];
+        targetPanel.GetWorldCorners(panelCorners); // 창의 4개 모서리 좌표 구하기
 
-        RectTransform canvasRect = canvas.transform as RectTransform;
-        canvasRect.GetWorldCorners(canvasCorners);
-        targetWindow.GetWorldCorners(panelCorners);
+        Vector3[] canvasCorners = new Vector3[4];
+        canvasRectTransform.GetWorldCorners(canvasCorners); // 전체 화면(캔버스)의 4개 모서리 좌표 구하기
 
-        float tx = 0f;
-        float ty = 0f;
+        // X축 (좌우) 이탈 방지
+        if (panelCorners[0].x < canvasCorners[0].x) // 왼쪽으로 나갔을 때
+            targetPanel.position += new Vector3(canvasCorners[0].x - panelCorners[0].x, 0, 0);
+        else if (panelCorners[2].x > canvasCorners[2].x) // 오른쪽으로 나갔을 때
+            targetPanel.position -= new Vector3(panelCorners[2].x - canvasCorners[2].x, 0, 0);
 
-        // 좌우상하 경계선을 넘어가면 반대쪽으로 밀어내기
-        if (panelCorners[0].x < canvasCorners[0].x) tx = canvasCorners[0].x - panelCorners[0].x;
-        if (panelCorners[2].x > canvasCorners[2].x) tx = canvasCorners[2].x - panelCorners[2].x;
-        if (panelCorners[0].y < canvasCorners[0].y) ty = canvasCorners[0].y - panelCorners[0].y;
-        if (panelCorners[2].y > canvasCorners[2].y) ty = canvasCorners[2].y - panelCorners[2].y;
-
-        targetWindow.position = new Vector3(targetWindow.position.x + tx, targetWindow.position.y + ty, targetWindow.position.z);
+        // Y축 (위아래) 이탈 방지
+        if (panelCorners[0].y < canvasCorners[0].y) // 아래로 나갔을 때
+            targetPanel.position += new Vector3(0, canvasCorners[0].y - panelCorners[0].y, 0);
+        else if (panelCorners[2].y > canvasCorners[2].y) // 위로 나갔을 때
+            targetPanel.position -= new Vector3(0, panelCorners[2].y - canvasCorners[2].y, 0);
     }
 }
