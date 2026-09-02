@@ -75,6 +75,11 @@ public class PlayerMovement : MonoBehaviour
     private float lastDashInputTime = -10f;
     private float inputBufferWindow = 0.1f; 
 
+    // ⭐ 움직이는 발판 추적용 변수들
+    private Transform currentPlatform;
+    private Vector3 lastPlatformPos;
+    private Vector2 movingPlatformVelocity = Vector2.zero;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -96,7 +101,6 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // ⭐ [에러 방어막] 시간이 멈췄을 때(일시정지 중)는 아래의 모든 키보드 입력을 무시하고 넘깁니다!
         if (Time.timeScale == 0f) return;
 
         CheckGrounded();
@@ -157,7 +161,6 @@ public class PlayerMovement : MonoBehaviour
             else transform.localScale = new Vector3(1, 1, 1);
         }
 
-        // ⭐ 잃어버렸던 공격 중 마스킹 로직 완벽 복구!
         bool isAttacking = anim.GetCurrentAnimatorStateInfo(0).IsName("Whiteray_Attack01") || 
                            anim.GetCurrentAnimatorStateInfo(0).IsName("Whiteray_Attack02") || 
                            anim.GetCurrentAnimatorStateInfo(0).IsName("Whiteray_Attack03");
@@ -279,17 +282,17 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private bool PiercingRaycast(Vector2 start, Vector2 dir, float length)
+    private Collider2D GetPiercingCollider(Vector2 start, Vector2 dir, float length)
     {
         RaycastHit2D[] hits = Physics2D.RaycastAll(start, dir, length);
         foreach (RaycastHit2D hit in hits)
         {
             if (hit.collider != null && hit.collider.gameObject != gameObject && !hit.collider.isTrigger)
             {
-                return true;
+                return hit.collider;
             }
         }
-        return false; 
+        return null; 
     }
 
     private void CheckGrounded()
@@ -301,12 +304,30 @@ public class PlayerMovement : MonoBehaviour
         Vector2 rightFoot = new Vector2(bodyCollider.bounds.max.x - 0.1f, startY);
         Vector2 centerFoot = new Vector2(bodyCollider.bounds.center.x, startY); 
         
-        bool leftGrounded = PiercingRaycast(leftFoot, Vector2.down, rayLength);
-        bool rightGrounded = PiercingRaycast(rightFoot, Vector2.down, rayLength);
-        bool centerGrounded = PiercingRaycast(centerFoot, Vector2.down, rayLength);
+        Collider2D leftHit = GetPiercingCollider(leftFoot, Vector2.down, rayLength);
+        Collider2D rightHit = GetPiercingCollider(rightFoot, Vector2.down, rayLength);
+        Collider2D centerHit = GetPiercingCollider(centerFoot, Vector2.down, rayLength);
+        
+        Collider2D validHit = centerHit != null ? centerHit : (leftHit != null ? leftHit : rightHit);
         
         bool wasGrounded = isGrounded;
-        isGrounded = leftGrounded || rightGrounded || centerGrounded;
+        isGrounded = validHit != null;
+
+        // ⭐ 핵심 수정: 어떤 물체를 밟았는지 Transform을 기억해둡니다.
+        if (isGrounded)
+        {
+            Transform hitTransform = validHit.transform;
+            if (currentPlatform != hitTransform)
+            {
+                currentPlatform = hitTransform;
+                lastPlatformPos = currentPlatform.position;
+            }
+        }
+        else
+        {
+            currentPlatform = null;
+            movingPlatformVelocity = Vector2.zero;
+        }
         
         if (isGrounded && !wasGrounded)
         {
@@ -348,6 +369,21 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
+        // ⭐ 핵심 수정: 더미의 '가짜 속도(velocity)'를 믿지 않고,
+        // 이번 프레임에 실제로 몇 미터를 이동했는지 거리를 재서 속도를 구합니다.
+        if (currentPlatform != null)
+        {
+            float deltaX = currentPlatform.position.x - lastPlatformPos.x;
+            movingPlatformVelocity = new Vector2(deltaX / Time.fixedDeltaTime, 0f);
+            
+            // 다음 측정을 위해 현재 좌표 저장
+            lastPlatformPos = currentPlatform.position;
+        }
+        else
+        {
+            movingPlatformVelocity = Vector2.zero;
+        }
+
         if (isDashing)
         {
             if (currentDashDir.x != 0 && IsTouchingWall(currentDashDir.x)) EndDashEarly(); 
@@ -356,15 +392,16 @@ public class PlayerMovement : MonoBehaviour
         
         float currentSpeed = (isDashJumping || isAirDashFloating || momentumTimer > 0) ? dashPower : moveSpeed;
         
-        // ⭐ 공격 중 이동 속도 감소 복구!
         bool isAttacking = anim.GetCurrentAnimatorStateInfo(0).IsName("Whiteray_Attack01") || 
                            anim.GetCurrentAnimatorStateInfo(0).IsName("Whiteray_Attack02") || 
                            anim.GetCurrentAnimatorStateInfo(0).IsName("Whiteray_Attack03");
 
         if (isAttacking) currentSpeed = currentSpeed * 0.5f;
 
+        float targetVelocityX = (moveInput * currentSpeed) + movingPlatformVelocity.x;
+
         if (IsTouchingWall(moveInput)) rb.velocity = new Vector2(0f, rb.velocity.y);
-        else rb.velocity = new Vector2(moveInput * currentSpeed, rb.velocity.y);
+        else rb.velocity = new Vector2(targetVelocityX, rb.velocity.y);
 
         if (isGrounded && rb.velocity.y > 0 && jumpCount == 0 && !isDashing)
         {
@@ -384,8 +421,8 @@ public class PlayerMovement : MonoBehaviour
         
         Vector2 rayDir = direction > 0 ? Vector2.right : Vector2.left;
         
-        bool hitTopWall = PiercingRaycast(upperSide, rayDir, distance);
-        bool hitBottomWall = PiercingRaycast(lowerSide, rayDir, distance);
+        bool hitTopWall = GetPiercingCollider(upperSide, rayDir, distance) != null;
+        bool hitBottomWall = GetPiercingCollider(lowerSide, rayDir, distance) != null;
         
         return hitTopWall || hitBottomWall;
     }

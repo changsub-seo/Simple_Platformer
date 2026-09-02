@@ -16,14 +16,14 @@ public class InventoryManager : MonoBehaviour
     public TextMeshProUGUI tooltipName; 
     public TextMeshProUGUI tooltipStats; 
 
-    [Header("스탯 색상 팔레트 (인스펙터에서 수정 가능)")]
+    [Header("스탯 색상 팔레트")]
     public Color hpColor = new Color(1.0f, 0.3f, 0.3f);
     public Color mpColor = new Color(0.3f, 0.6f, 1.0f);
     public Color adColor = new Color(0.4f, 0.7f, 1.0f); 
     public Color apColor = new Color(0.0f, 0.8f, 0.8f);
     public Color msColor = new Color(0.2f, 0.9f, 0.2f);
 
-    [Header("가방 크기 설계 (칸 수 조절용)")]
+    [Header("가방 크기 설계")]
     public int columns = 5;          
     public int rows = 5;             
     public float slotSize = 75f;     
@@ -135,60 +135,51 @@ public class InventoryManager : MonoBehaviour
         if (item.hasMS) statText += GetColoredStatString("이동속도", item.rolledMS, msColor) + "\n";
 
         tooltipStats.text = statText.TrimEnd();
-
         tooltipPanel.SetActive(true);
 
         Canvas.ForceUpdateCanvases();
-        if (tooltipName.TryGetComponent(out RectTransform nameRect))
-            LayoutRebuilder.ForceRebuildLayoutImmediate(nameRect);
-        if (tooltipStats.TryGetComponent(out RectTransform statsRect))
-            LayoutRebuilder.ForceRebuildLayoutImmediate(statsRect);
-        LayoutRebuilder.ForceRebuildLayoutImmediate(tooltipPanel.GetComponent<RectTransform>());
-
-        RectTransform inventoryRect = inventoryPanel.GetComponent<RectTransform>();
+        if (tooltipName.TryGetComponent(out RectTransform nameRect)) LayoutRebuilder.ForceRebuildLayoutImmediate(nameRect);
+        if (tooltipStats.TryGetComponent(out RectTransform statsRect)) LayoutRebuilder.ForceRebuildLayoutImmediate(statsRect);
+        
         RectTransform tooltipRect = tooltipPanel.GetComponent<RectTransform>();
-        Canvas canvas = tooltipRect.GetComponentInParent<Canvas>();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(tooltipRect);
 
-        Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            inventoryRect, 
-            RectTransformUtility.WorldToScreenPoint(null, slotRect.position), 
-            null, 
-            out localPoint
-        );
+        Vector3[] slotCorners = new Vector3[4];
+        slotRect.GetWorldCorners(slotCorners);
+        Vector3 slotTopCenter = (slotCorners[1] + slotCorners[2]) / 2f;
+        Vector3 slotBottomCenter = (slotCorners[0] + slotCorners[3]) / 2f;
 
-        float tooltipHeight = tooltipRect.rect.height;
-        float slotHeight = slotRect.rect.height;
-        float pad = 5f;
+        tooltipRect.position = slotTopCenter;
 
-        // ⭐ 1. 기본 위치: 슬롯의 상단 정중앙으로 배치 (Pivot Y가 1이므로 높이를 더해줍니다)
-        float topY = localPoint.y + (slotHeight * 0.5f) + tooltipHeight + pad;
-        // ⭐ 2. 예외 위치: 공간이 없을 때 반대로 출력할 하단 위치
-        float bottomY = localPoint.y - (slotHeight * 0.5f) - pad;
+        Vector3[] tooltipCorners = new Vector3[4];
+        tooltipRect.GetWorldCorners(tooltipCorners);
+        Vector3 tooltipBottomCenter = (tooltipCorners[0] + tooltipCorners[3]) / 2f;
+        
+        float offsetY = slotTopCenter.y - tooltipBottomCenter.y;
+        tooltipRect.position += new Vector3(0, offsetY, 0);
 
-        // 우선 상단으로 배치해 봅니다.
-        localPoint.y = topY;
-        tooltipRect.anchoredPosition = localPoint;
-
-        // 화면 위에 툴팁을 띄울 공간이 충분한지 검사합니다.
-        if (canvas != null)
+        // ⭐ 변경점: 툴팁 자신의 캔버스가 아닌, 화면 전체를 아우르는 가장 상위의 '루트 캔버스'를 찾아서 기준으로 삼습니다.
+        Canvas parentCanvas = tooltipRect.GetComponentInParent<Canvas>();
+        if (parentCanvas != null)
         {
-            Vector3[] tooltipCorners = new Vector3[4];
+            Canvas rootCanvas = parentCanvas.rootCanvas;
             tooltipRect.GetWorldCorners(tooltipCorners); 
-
+            
             Vector3[] canvasCorners = new Vector3[4];
-            ((RectTransform)canvas.transform).GetWorldCorners(canvasCorners); 
+            rootCanvas.GetComponent<RectTransform>().GetWorldCorners(canvasCorners);
 
-            // 툴팁의 가장 위쪽 끝(인덱스 1)이 화면 가장 위쪽을 벗어났다면
-            if (tooltipCorners[1].y > canvasCorners[1].y)
+            if (tooltipCorners[1].y > canvasCorners[1].y) // 화면 윗부분을 뚫고 나갔다면
             {
-                // 위치를 아이템 하단으로 뒤집어줍니다.
-                localPoint.y = bottomY;
-                tooltipRect.anchoredPosition = localPoint;
+                tooltipRect.position = slotBottomCenter; 
+                tooltipRect.GetWorldCorners(tooltipCorners);
+                Vector3 tooltipTopCenter = (tooltipCorners[1] + tooltipCorners[2]) / 2f;
+                
+                float flipOffsetY = slotBottomCenter.y - tooltipTopCenter.y;
+                tooltipRect.position += new Vector3(0, flipOffsetY, 0);
             }
         }
 
-        // 좌우로 벗어남 등 최종적인 안전망 보정 실행
+        // 마지막 화면 삐져나감 보정 실행
         ClampTooltipToScreen(tooltipRect);
     }
 
@@ -206,10 +197,12 @@ public class InventoryManager : MonoBehaviour
 
     private void ClampTooltipToScreen(RectTransform tooltipRect)
     {
-        Canvas canvas = tooltipRect.GetComponentInParent<Canvas>();
-        if (canvas == null) return;
+        // ⭐ 여기도 마찬가지로 '루트 캔버스'를 불러와 화면 전체 크기 안으로 밀어넣습니다.
+        Canvas parentCanvas = tooltipRect.GetComponentInParent<Canvas>();
+        if (parentCanvas == null) return;
 
-        RectTransform canvasRect = canvas.transform as RectTransform;
+        Canvas rootCanvas = parentCanvas.rootCanvas;
+        RectTransform canvasRect = rootCanvas.GetComponent<RectTransform>();
 
         Vector3[] canvasCorners = new Vector3[4];
         canvasRect.GetWorldCorners(canvasCorners);
@@ -220,6 +213,7 @@ public class InventoryManager : MonoBehaviour
         float tx = 0f;
         float ty = 0f;
 
+        // 좌우 삐져나감 밀어넣기
         if (tooltipCorners[2].x > canvasCorners[2].x)
         {
             tx = canvasCorners[2].x - tooltipCorners[2].x;
@@ -229,15 +223,16 @@ public class InventoryManager : MonoBehaviour
             tx = canvasCorners[0].x - tooltipCorners[0].x;
         }
 
+        // 상하 삐져나감 밀어넣기 (아래쪽 막기 + 뒤집기를 했음에도 위로 나가는 예외 막기)
         if (tooltipCorners[0].y < canvasCorners[0].y)
         {
             ty = canvasCorners[0].y - tooltipCorners[0].y;
         }
-        else if (tooltipCorners[2].y > canvasCorners[2].y)
+        else if (tooltipCorners[1].y > canvasCorners[1].y)
         {
-            ty = canvasCorners[2].y - tooltipCorners[2].y;
+            ty = canvasCorners[1].y - tooltipCorners[1].y;
         }
 
-        tooltipRect.position = new Vector3(tooltipRect.position.x + tx, tooltipRect.position.y + ty, tooltipRect.position.z);
+        tooltipRect.position += new Vector3(tx, ty, 0f);
     }
 }

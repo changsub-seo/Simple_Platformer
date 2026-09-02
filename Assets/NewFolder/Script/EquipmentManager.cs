@@ -1,4 +1,6 @@
 using UnityEngine;
+using TMPro; // TextMeshPro를 사용하기 위해 추가
+using System.Collections.Generic; // HashSet(중복 방지)을 사용하기 위해 추가
 
 public class EquipmentManager : MonoBehaviour
 {
@@ -6,6 +8,9 @@ public class EquipmentManager : MonoBehaviour
     
     [Header("장비 슬롯 12개 연결")]
     public EquipSlot[] allEquipSlots; 
+
+    [Header("스탯창 텍스트 연결")]
+    public TextMeshProUGUI statTextUI; // ⭐ 여기에 텍스트를 연결할 겁니다!
 
     void Awake()
     {
@@ -25,7 +30,6 @@ public class EquipmentManager : MonoBehaviour
             return false;
         }
 
-        // 상/하의 슬롯 미리 찾기
         EquipSlot topSlot = null;
         EquipSlot bottomSlot = null;
         foreach (EquipSlot slot in allEquipSlots)
@@ -60,12 +64,12 @@ public class EquipmentManager : MonoBehaviour
 
                 topSlot.EquipItemWithAlpha(itemToEquip, 1.0f);
                 bottomSlot.EquipItemWithAlpha(itemToEquip, 0.4f);
+                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
                 return true;
             }
             return false;
         }
 
-        // 단독 상/하의 장착 시 한벌옷 찌꺼기 정리
         if (parsedEquipSlot.Equals("Top", System.StringComparison.OrdinalIgnoreCase) || parsedEquipSlot.Equals("Bottom", System.StringComparison.OrdinalIgnoreCase))
         {
             if (topSlot != null && bottomSlot != null)
@@ -107,11 +111,11 @@ public class EquipmentManager : MonoBehaviour
                 }
 
                 targetRing.EquipItemWithAlpha(itemToEquip, 1.0f);
+                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
                 return true;
             }
         }
 
-        // 무기 슬롯 수집
         EquipSlot weapon1 = null;
         EquipSlot weapon2 = null;
         foreach (EquipSlot slot in allEquipSlots)
@@ -123,7 +127,7 @@ public class EquipmentManager : MonoBehaviour
             }
         }
 
-        // ⭐ 3. 양손무기 처리 (잔상 및 복사 방지 로직 보완)
+        // 3. 양손무기 처리
         if (parsedEquipSlot.Equals("TwoHandWeapon", System.StringComparison.OrdinalIgnoreCase))
         {
             if (weapon1 != null && weapon2 != null)
@@ -131,7 +135,6 @@ public class EquipmentManager : MonoBehaviour
                 bool hasW1 = (weapon1.equippedItem != null && !string.IsNullOrEmpty(weapon1.equippedItem.finalName));
                 bool hasW2 = (weapon2.equippedItem != null && !string.IsNullOrEmpty(weapon2.equippedItem.finalName));
 
-                // 이미 같은 양손무기를 끼고 있다면 무시
                 if (hasW1 && hasW2 && (weapon1.equippedItem == weapon2.equippedItem) && (weapon1.equippedItem.finalName == itemToEquip.finalName)) return false;
 
                 if (hasW1)
@@ -150,12 +153,13 @@ public class EquipmentManager : MonoBehaviour
 
                 weapon1.EquipItemWithAlpha(itemToEquip, 1.0f);
                 weapon2.EquipItemWithAlpha(itemToEquip, 0.4f);
+                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
                 return true;
             }
             return false;
         }
 
-        // ⭐ 4. 한손무기 처리 (양손무기 장착 중일 때 찌꺼기 세트 해제 포함)
+        // 4. 한손무기 처리
         if (parsedEquipSlot.Equals("OneHandWeapon", System.StringComparison.OrdinalIgnoreCase))
         {
             if (weapon1 != null && weapon2 != null)
@@ -182,6 +186,7 @@ public class EquipmentManager : MonoBehaviour
                 }
 
                 targetWeapon.EquipItemWithAlpha(itemToEquip, 1.0f);
+                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
                 return true;
             }
             return false;
@@ -213,9 +218,63 @@ public class EquipmentManager : MonoBehaviour
             }
 
             targetSlotGeneric.EquipItemWithAlpha(itemToEquip, 1.0f);
+            UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
             return true; 
         }
 
         return false;
+    }
+
+    // ⭐ 새롭게 추가된 스탯 종합 계산기 함수입니다!
+    public void UpdateTotalStats()
+    {
+        if (statTextUI == null) return; // 텍스트가 연결 안 되어있으면 무시
+
+        int totalHP = 0, totalMP = 0, totalAD = 0, totalAP = 0, totalMS = 0;
+
+        // 양손무기나 한벌옷이 두 번 더해지는 것을 막기 위해 중복 제거(HashSet)를 사용합니다.
+        HashSet<GeneratedItem> uniqueItems = new HashSet<GeneratedItem>();
+
+        foreach (EquipSlot slot in allEquipSlots)
+        {
+            if (slot.equippedItem != null && !string.IsNullOrEmpty(slot.equippedItem.finalName))
+            {
+                uniqueItems.Add(slot.equippedItem);
+            }
+        }
+
+        // 겹치지 않는 진짜 장비들만 스탯을 더해줍니다.
+        foreach (GeneratedItem item in uniqueItems)
+        {
+            if (item.hasHP) totalHP += item.rolledHP;
+            if (item.hasMP) totalMP += item.rolledMP;
+            if (item.hasAD) totalAD += item.rolledAD;
+            if (item.hasAP) totalAP += item.rolledAP;
+            if (item.hasMS) totalMS += item.rolledMS;
+        }
+
+        // 합산된 스탯을 예쁜 문자열로 만듭니다.
+        string resultText = "";
+        resultText += FormatStatString("체력", totalHP);
+        resultText += FormatStatString("마나", totalMP);
+        resultText += FormatStatString("물리 공격력", totalAD);
+        resultText += FormatStatString("마법 공격력", totalAP);
+        resultText += FormatStatString("이동속도", totalMS);
+
+        // 아무것도 낀 게 없으면 띄울 기본 멘트
+        if (string.IsNullOrEmpty(resultText))
+        {
+            resultText = "장착된 장비가 없습니다.";
+        }
+
+        statTextUI.text = resultText.TrimEnd(); // 마지막 줄바꿈 제거 후 출력
+    }
+
+    // 스탯 수치에 따라 +, - 기호를 예쁘게 붙여주는 도우미 함수
+    private string FormatStatString(string statName, int value)
+    {
+        if (value == 0) return ""; // 0이면 출력 안 함
+        string sign = value > 0 ? "+" : ""; // 양수면 + 붙이기
+        return $"{statName} {sign}{value}\n";
     }
 }

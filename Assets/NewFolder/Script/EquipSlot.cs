@@ -83,7 +83,6 @@ public class EquipSlot : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
             EquipmentManager mgr = EquipmentManager.instance;
             if (mgr != null)
             {
-                // ⭐ 1. 한벌옷 세트 해제 처리 (상의나 하의 어디를 우클릭해도 둘 다 세트로 해제)
                 if (slotType == EquipmentType.Top || slotType == EquipmentType.Bottom)
                 {
                     EquipSlot topS = null;
@@ -97,18 +96,15 @@ public class EquipSlot : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
                     if (topS != null && botS != null && topS.equippedItem != null && botS.equippedItem != null && (topS.equippedItem == botS.equippedItem))
                     {
                         bool added = InventoryManager.instance.AddItemToInventory(topS.equippedItem);
-                        if (!added)
-                        {
-                            Debug.LogWarning("인벤토리가 꽉 찼습니다!");
-                            return;
-                        }
+                        if (!added) return;
+                        
                         topS.UnequipItem();
                         botS.UnequipItem();
+                        mgr.UpdateTotalStats(); // ⭐ 한벌옷 해제 후 스탯 갱신
                         return;
                     }
                 }
 
-                // ⭐ 2. 양손무기 세트 해제 처리 (무기1 혹은 무기2 어디를 우클릭해도 세트로 해제)
                 if (slotType == EquipmentType.OneHandWeapon || slotType == EquipmentType.TwoHandWeapon)
                 {
                     EquipSlot w1 = null;
@@ -125,27 +121,21 @@ public class EquipSlot : MonoBehaviour, IPointerClickHandler, IPointerEnterHandl
                     if (w1 != null && w2 != null && w1.equippedItem != null && w2.equippedItem != null && (w1.equippedItem == w2.equippedItem))
                     {
                         bool added = InventoryManager.instance.AddItemToInventory(w1.equippedItem);
-                        if (!added)
-                        {
-                            Debug.LogWarning("인벤토리가 꽉 찼습니다!");
-                            return;
-                        }
+                        if (!added) return;
+                        
                         w1.UnequipItem();
                         w2.UnequipItem();
+                        mgr.UpdateTotalStats(); // ⭐ 양손무기 해제 후 스탯 갱신
                         return;
                     }
                 }
             }
 
-            // 일반 장비 또는 단독 장비 해제
             bool isAdded = InventoryManager.instance.AddItemToInventory(equippedItem);
-            if (!isAdded)
-            {
-                Debug.LogWarning("인벤토리가 꽉 차서 장비를 해제할 수 없습니다!");
-                return;
-            }
+            if (!isAdded) return;
 
             UnequipItem(); 
+            if (mgr != null) mgr.UpdateTotalStats(); // ⭐ 일반 장비 해제 후 스탯 갱신
         }
     }
 }

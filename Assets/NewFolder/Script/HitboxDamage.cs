@@ -15,11 +15,15 @@ public class HitboxDamage : MonoBehaviour
     public float soundVolume = 1.0f;
 
     [Header("드랍 아이템")]
-    public GameObject coinPrefab; // ⭐ 뱉어낼 코인 프리팹
+    public GameObject coinPrefab; 
 
-    private HashSet<BreakableBlock> hitBlocksThisFrame = new HashSet<BreakableBlock>();
+    [Header("몬스터 타격 설정")]
+    public int physicalDamage = 10; 
+    public int elementalDamage = 0; 
 
-    void Start()
+    private HashSet<Collider2D> alreadyHitColliders = new HashSet<Collider2D>();
+
+    void Awake()
     {
         hitboxCollider = GetComponent<BoxCollider2D>();
         
@@ -28,12 +32,15 @@ public class HitboxDamage : MonoBehaviour
         filter.useTriggers = true; 
     }
 
+    void OnEnable()
+    {
+        ClearHitMemory();
+    }
+
     void Update()
     {
         Collider2D[] results = new Collider2D[50]; 
         int hitCount = hitboxCollider.OverlapCollider(filter, results);
-
-        hitBlocksThisFrame.Clear(); 
 
         for (int i = 0; i < hitCount; i++)
         {
@@ -41,32 +48,43 @@ public class HitboxDamage : MonoBehaviour
         }
     }
 
+    // ⭐ 다른 스크립트에서 강제로 명부를 지울 수 있게 Public으로 열어둡니다.
+    public void ClearHitMemory()
+    {
+        alreadyHitColliders.Clear();
+    }
+
     private void ProcessDamage(Collider2D other)
     {
         if (!other || !other.gameObject) return;
+        
+        if (alreadyHitColliders.Contains(other)) return;
 
         try
         {
+            IDamageable target = other.GetComponent<IDamageable>();
+            if (target != null)
+            {
+                alreadyHitColliders.Add(other); 
+                target.TakeDamage(physicalDamage, elementalDamage);
+            }
+
             if (other.CompareTag("Breakable"))
             {
-                // 1. 검은색 블록 (BreakableBlock 스크립트가 있는 객체)
                 BreakableBlock blockScript = other.GetComponentInParent<BreakableBlock>();
                 if (blockScript == null) blockScript = other.GetComponent<BreakableBlock>();
 
                 if (blockScript != null)
                 {
-                    if (!blockScript || !blockScript.gameObject) return;
-                    if (hitBlocksThisFrame.Contains(blockScript)) return;
-                    hitBlocksThisFrame.Add(blockScript); 
-
-                    blockScript.BreakBlock(); // 블록 파괴 (이 안에서 코인 소환)
+                    alreadyHitColliders.Add(other); 
+                    blockScript.BreakBlock();
                     return; 
                 }
 
-                // 2. 노란색 블록 (순수 타일맵)
                 Tilemap tilemap = other.GetComponent<Tilemap>();
                 if (tilemap != null)
                 {
+                    alreadyHitColliders.Add(other); 
                     Bounds bounds = hitboxCollider.bounds;
                     Vector3Int minCell = tilemap.WorldToCell(bounds.min);
                     Vector3Int maxCell = tilemap.WorldToCell(bounds.max);
@@ -77,15 +95,13 @@ public class HitboxDamage : MonoBehaviour
                         {
                             Vector3Int cellPos = new Vector3Int(x, y, 0);
                             
-                            // 타일이 존재하는 위치라면?
                             if (tilemap.HasTile(cellPos))
                             {
                                 Vector3 effectPos = tilemap.GetCellCenterWorld(cellPos);
                                 PlayEffects(effectPos);
                                 
-                                tilemap.SetTile(cellPos, null); // 타일 지우기
+                                tilemap.SetTile(cellPos, null); 
 
-                                // ⭐ [핵심 추가] 타일이 부서진 위치에 코인 프리팹 소환!
                                 if (coinPrefab != null)
                                 {
                                     Instantiate(coinPrefab, effectPos, Quaternion.identity);
@@ -98,7 +114,6 @@ public class HitboxDamage : MonoBehaviour
         }
         catch (System.Exception)
         {
-            // 에러 무시
         }
     }
 
