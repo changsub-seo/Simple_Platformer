@@ -17,11 +17,17 @@ public class InventoryManager : MonoBehaviour
     public TextMeshProUGUI tooltipStats; 
 
     [Header("스탯 색상 팔레트")]
+    public Color strColor = new Color(1.0f, 0.4f, 0.4f);
+    public Color dexColor = new Color(0.4f, 0.9f, 0.4f);
+    public Color intColor = new Color(0.4f, 0.6f, 1.0f);
+    public Color atkColor = new Color(1.0f, 0.8f, 0.2f);
+    public Color abilityPowerColor = new Color(0.8f, 0.5f, 1.0f);
+    public Color defColor = new Color(0.7f, 0.7f, 0.7f);
+    public Color msColor = new Color(0.2f, 0.8f, 0.2f);
+    public Color jfColor = new Color(0.8f, 0.4f, 1.0f);
     public Color hpColor = new Color(1.0f, 0.3f, 0.3f);
     public Color mpColor = new Color(0.3f, 0.6f, 1.0f);
-    public Color adColor = new Color(0.4f, 0.7f, 1.0f); 
-    public Color apColor = new Color(0.0f, 0.8f, 0.8f);
-    public Color msColor = new Color(0.2f, 0.9f, 0.2f);
+    public Color spiritColor = new Color(0.6f, 0.4f, 0.8f);
 
     [Header("가방 크기 설계")]
     public int columns = 5;          
@@ -127,14 +133,14 @@ public class InventoryManager : MonoBehaviour
         
         tooltipName.text = item.finalName;
 
-        string statText = "";
-        if (item.hasHP) statText += GetColoredStatString("체력", item.rolledHP, hpColor) + "\n";
-        if (item.hasMP) statText += GetColoredStatString("마나", item.rolledMP, mpColor) + "\n";
-        if (item.hasAD) statText += GetColoredStatString("물리 공격력", item.rolledAD, adColor) + "\n";
-        if (item.hasAP) statText += GetColoredStatString("마법 공격력", item.rolledAP, apColor) + "\n";
-        if (item.hasMS) statText += GetColoredStatString("이동속도", item.rolledMS, msColor) + "\n";
+        System.Collections.Generic.List<string> statLines = new System.Collections.Generic.List<string>();
+        foreach (System.Collections.Generic.KeyValuePair<string, StatRoll> pair in item.stats)
+        {
+            if (pair.Value == null || !pair.Value.hasValue) continue;
+            statLines.Add(GetColoredStatString(StatKeys.DisplayName(pair.Key), pair.Value.value, GetStatColor(pair.Key)));
+        }
 
-        tooltipStats.text = statText.TrimEnd();
+        tooltipStats.text = string.Join("\n", statLines);
         tooltipPanel.SetActive(true);
 
         Canvas.ForceUpdateCanvases();
@@ -158,7 +164,7 @@ public class InventoryManager : MonoBehaviour
         float offsetY = slotTopCenter.y - tooltipBottomCenter.y;
         tooltipRect.position += new Vector3(0, offsetY, 0);
 
-        // ⭐ 변경점: 툴팁 자신의 캔버스가 아닌, 화면 전체를 아우르는 가장 상위의 '루트 캔버스'를 찾아서 기준으로 삼습니다.
+        // 캔버스 삐져나감 제어
         Canvas parentCanvas = tooltipRect.GetComponentInParent<Canvas>();
         if (parentCanvas != null)
         {
@@ -179,7 +185,6 @@ public class InventoryManager : MonoBehaviour
             }
         }
 
-        // 마지막 화면 삐져나감 보정 실행
         ClampTooltipToScreen(tooltipRect);
     }
 
@@ -188,16 +193,37 @@ public class InventoryManager : MonoBehaviour
         if (tooltipPanel != null) tooltipPanel.SetActive(false);
     }
 
-    private string GetColoredStatString(string statName, int rolled, Color color)
+    private Color GetStatColor(string statKey)
+    {
+        switch (StatKeys.Normalize(statKey))
+        {
+            case "STR": return strColor;
+            case "DEX": return dexColor;
+            case "INT": return intColor;
+            case "AttackDamage": return atkColor;
+            case "AbilityPower": return abilityPowerColor;
+            case "Defense": return defColor;
+            case "MoveSpeed": return msColor;
+            case "JumpForce": return jfColor;
+            case "HP": return hpColor;
+            case "MP": return mpColor;
+            case "Spirit": return spiritColor;
+            default: return Color.white;
+        }
+    }
+
+    private string GetColoredStatString(string statName, float rolled, Color color)
     {
         string hex = ColorUtility.ToHtmlStringRGB(color);
         string sign = (rolled >= 0) ? "+" : "";
-        return $"<color=#{hex}>{statName} {sign}{rolled}</color>";
+        string value = Mathf.Approximately(rolled, Mathf.Round(rolled))
+            ? Mathf.RoundToInt(rolled).ToString()
+            : rolled.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+        return $"<color=#{hex}>{statName} {sign}{value}</color>";
     }
 
     private void ClampTooltipToScreen(RectTransform tooltipRect)
     {
-        // ⭐ 여기도 마찬가지로 '루트 캔버스'를 불러와 화면 전체 크기 안으로 밀어넣습니다.
         Canvas parentCanvas = tooltipRect.GetComponentInParent<Canvas>();
         if (parentCanvas == null) return;
 
@@ -223,7 +249,7 @@ public class InventoryManager : MonoBehaviour
             tx = canvasCorners[0].x - tooltipCorners[0].x;
         }
 
-        // 상하 삐져나감 밀어넣기 (아래쪽 막기 + 뒤집기를 했음에도 위로 나가는 예외 막기)
+        // 상하 삐져나감 밀어넣기
         if (tooltipCorners[0].y < canvasCorners[0].y)
         {
             ty = canvasCorners[0].y - tooltipCorners[0].y;

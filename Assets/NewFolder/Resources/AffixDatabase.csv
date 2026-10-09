@@ -1,0 +1,30 @@
+ID,Type,AffixName,StatType,StatValue
+아이디,타입,어픽스이름,스탯타입,스탯수치
+1,Prefix,훔쳐온,HP,-5
+2,Prefix,도둑질한,MP,-10
+3,Prefix,연마한,AttackDamage,5
+4,Prefix,쌔빈,AttackDamage,-5
+5,Prefix,럭가네집에서 만든,MoveSpeed,10
+6,Prefix,양이쓰던,AttackDamage,10
+7,Prefix,메구밍이 준,MoveSpeed,-10
+8,Prefix,셀렉트가 선택한,"HP,MP",5
+9,Prefix,두고가 두고간,"HP,MP",-5
+10,Prefix,묵직한,STR,5
+11,Prefix,날카로운,DEX,5
+12,Prefix,영리한,INT,5
+13,Prefix,단단한,Defense,5
+14,Prefix,가벼운,JumpForce,2
+101,Suffix,체력이 감소,HP,-5
+102,Suffix,마나가 감소,MP,-10
+103,Suffix,공격력이 증가,AttackDamage,5
+104,Suffix,공격력이 감소,AttackDamage,-5
+105,Suffix,이속이 증가,MoveSpeed,10
+106,Suffix,공격력 대폭 증가,AttackDamage,10
+107,Suffix,이속이 감소,MoveSpeed,-10
+108,Suffix,체마나 증가,"HP,MP",5
+109,Suffix,체마나 감소,"HP,MP",-5
+110,Suffix,힘이 증가,STR,5
+111,Suffix,민첩이 증가,DEX,5
+112,Suffix,지능이 증가,INT,5
+113,Suffix,방어력이 증가,Defense,5
+114,Suffix,점프력이 증가,JumpForce,2

@@ -1,20 +1,29 @@
 using UnityEngine;
-using TMPro; // TextMeshPro를 사용하기 위해 추가
-using System.Collections.Generic; // HashSet(중복 방지)을 사용하기 위해 추가
+using TMPro; 
+using System.Collections.Generic; 
 
 public class EquipmentManager : MonoBehaviour
 {
     public static EquipmentManager instance;
-    
+    public static EquipmentManager Instance => instance; 
+
     [Header("장비 슬롯 12개 연결")]
     public EquipSlot[] allEquipSlots; 
 
     [Header("스탯창 텍스트 연결")]
-    public TextMeshProUGUI statTextUI; // ⭐ 여기에 텍스트를 연결할 겁니다!
+    public TextMeshProUGUI statTextUI; 
+
+    private PlayerStats playerStats;
 
     void Awake()
     {
         if (instance == null) instance = this;
+        playerStats = GetComponent<PlayerStats>();
+    }
+
+    void Start()
+    {
+        if (playerStats == null) playerStats = FindObjectOfType<PlayerStats>();
     }
 
     public bool EquipFromInventory(GeneratedItem itemToEquip) 
@@ -64,7 +73,7 @@ public class EquipmentManager : MonoBehaviour
 
                 topSlot.EquipItemWithAlpha(itemToEquip, 1.0f);
                 bottomSlot.EquipItemWithAlpha(itemToEquip, 0.4f);
-                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
+                UpdateTotalStats(); 
                 return true;
             }
             return false;
@@ -111,7 +120,7 @@ public class EquipmentManager : MonoBehaviour
                 }
 
                 targetRing.EquipItemWithAlpha(itemToEquip, 1.0f);
-                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
+                UpdateTotalStats(); 
                 return true;
             }
         }
@@ -153,7 +162,7 @@ public class EquipmentManager : MonoBehaviour
 
                 weapon1.EquipItemWithAlpha(itemToEquip, 1.0f);
                 weapon2.EquipItemWithAlpha(itemToEquip, 0.4f);
-                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
+                UpdateTotalStats(); 
                 return true;
             }
             return false;
@@ -186,7 +195,7 @@ public class EquipmentManager : MonoBehaviour
                 }
 
                 targetWeapon.EquipItemWithAlpha(itemToEquip, 1.0f);
-                UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
+                UpdateTotalStats(); 
                 return true;
             }
             return false;
@@ -218,63 +227,106 @@ public class EquipmentManager : MonoBehaviour
             }
 
             targetSlotGeneric.EquipItemWithAlpha(itemToEquip, 1.0f);
-            UpdateTotalStats(); // ⭐ 장착 성공 시 스탯 갱신
+            UpdateTotalStats(); 
             return true; 
         }
 
         return false;
     }
 
-    // ⭐ 새롭게 추가된 스탯 종합 계산기 함수입니다!
-    public void UpdateTotalStats()
+    public HashSet<GeneratedItem> GetUniqueEquippedItems()
     {
-        if (statTextUI == null) return; // 텍스트가 연결 안 되어있으면 무시
-
-        int totalHP = 0, totalMP = 0, totalAD = 0, totalAP = 0, totalMS = 0;
-
-        // 양손무기나 한벌옷이 두 번 더해지는 것을 막기 위해 중복 제거(HashSet)를 사용합니다.
         HashSet<GeneratedItem> uniqueItems = new HashSet<GeneratedItem>();
+        if (allEquipSlots == null) return uniqueItems;
 
         foreach (EquipSlot slot in allEquipSlots)
         {
-            if (slot.equippedItem != null && !string.IsNullOrEmpty(slot.equippedItem.finalName))
+            if (slot != null && slot.equippedItem != null && !string.IsNullOrEmpty(slot.equippedItem.finalName))
             {
                 uniqueItems.Add(slot.equippedItem);
             }
         }
-
-        // 겹치지 않는 진짜 장비들만 스탯을 더해줍니다.
-        foreach (GeneratedItem item in uniqueItems)
-        {
-            if (item.hasHP) totalHP += item.rolledHP;
-            if (item.hasMP) totalMP += item.rolledMP;
-            if (item.hasAD) totalAD += item.rolledAD;
-            if (item.hasAP) totalAP += item.rolledAP;
-            if (item.hasMS) totalMS += item.rolledMS;
-        }
-
-        // 합산된 스탯을 예쁜 문자열로 만듭니다.
-        string resultText = "";
-        resultText += FormatStatString("체력", totalHP);
-        resultText += FormatStatString("마나", totalMP);
-        resultText += FormatStatString("물리 공격력", totalAD);
-        resultText += FormatStatString("마법 공격력", totalAP);
-        resultText += FormatStatString("이동속도", totalMS);
-
-        // 아무것도 낀 게 없으면 띄울 기본 멘트
-        if (string.IsNullOrEmpty(resultText))
-        {
-            resultText = "장착된 장비가 없습니다.";
-        }
-
-        statTextUI.text = resultText.TrimEnd(); // 마지막 줄바꿈 제거 후 출력
+        return uniqueItems;
     }
 
-    // 스탯 수치에 따라 +, - 기호를 예쁘게 붙여주는 도우미 함수
+    public void UpdateTotalStats()
+    {
+        Dictionary<string, float> totals = new Dictionary<string, float>(System.StringComparer.OrdinalIgnoreCase);
+        foreach (GeneratedItem item in GetUniqueEquippedItems())
+        {
+            if (item == null) continue;
+            foreach (KeyValuePair<string, StatRoll> pair in item.stats)
+            {
+                if (pair.Value == null || !pair.Value.hasValue) continue;
+                string key = StatKeys.Normalize(pair.Key);
+                totals[key] = totals.TryGetValue(key, out float current) ? current + pair.Value.value : pair.Value.value;
+            }
+        }
+
+        if (statTextUI != null)
+        {
+            List<string> lines = new List<string>();
+            List<string> keys = new List<string>(totals.Keys);
+            keys.Sort(System.StringComparer.OrdinalIgnoreCase);
+            foreach (string key in keys)
+            {
+                float value = totals[key];
+                if (Mathf.Approximately(value, 0f)) continue;
+                string formatted = Mathf.Approximately(value, Mathf.Round(value))
+                    ? Mathf.RoundToInt(value).ToString()
+                    : value.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                string sign = value > 0f ? "+" : string.Empty;
+                lines.Add($"{StatKeys.DisplayName(key)} {sign}{formatted}");
+            }
+            statTextUI.text = lines.Count == 0 ? "장착된 장비가 없습니다." : string.Join("\n", lines);
+        }
+
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats == null) playerStats = FindObjectOfType<PlayerStats>();
+        if (playerStats != null)
+        {
+            playerStats.UpdateDerivedStats();
+        }
+    }
+
     private string FormatStatString(string statName, int value)
     {
-        if (value == 0) return ""; // 0이면 출력 안 함
-        string sign = value > 0 ? "+" : ""; // 양수면 + 붙이기
+        if (value == 0) return ""; 
+        string sign = value > 0 ? "+" : ""; 
         return $"{statName} {sign}{value}\n";
     }
+
+    private string FormatFloatStatString(string statName, float value)
+    {
+        if (Mathf.Abs(value) < 0.01f) return ""; 
+        string sign = value > 0 ? "+" : ""; 
+        return $"{statName} {sign}{value:F1}\n";
+    }
+
+    public float GetTotalBonusStat(string statKey)
+    {
+        float total = 0f;
+        foreach (var item in GetUniqueEquippedItems())
+        {
+            if (item != null && item.HasStat(statKey)) total += item.GetStat(statKey);
+        }
+        return total;
+    }
+
+    public int GetTotalBonusStrength() => Mathf.RoundToInt(GetTotalBonusStat("STR"));
+    public int GetTotalBonusDexterity() => Mathf.RoundToInt(GetTotalBonusStat("DEX"));
+    public int GetTotalBonusIntelligence() => Mathf.RoundToInt(GetTotalBonusStat("INT"));
+
+    public float GetTotalBonusAttackDamage() => GetTotalBonusStat("AttackDamage");
+    public float GetTotalBonusAbilityPower() => GetTotalBonusStat("AbilityPower");
+    public float GetTotalBonusAttackSpeed() => GetTotalBonusStat("AttackSpeed");
+    public int GetTotalBonusDefense() => Mathf.RoundToInt(GetTotalBonusStat("Defense"));
+    public int GetTotalBonusResistance() => Mathf.RoundToInt(GetTotalBonusStat("Resistance"));
+    public float GetTotalBonusHitRate() => GetTotalBonusStat("HitRate");
+    public float GetTotalBonusMoveSpeed() => GetTotalBonusStat("MoveSpeed");
+    public float GetTotalBonusJumpForce() => GetTotalBonusStat("JumpForce");
+    public int GetTotalBonusHP() => Mathf.RoundToInt(GetTotalBonusStat("HP"));
+    public int GetTotalBonusMP() => Mathf.RoundToInt(GetTotalBonusStat("MP"));
+    public int GetTotalBonusSpirit() => Mathf.RoundToInt(GetTotalBonusStat("Spirit"));
+
 }

@@ -58,6 +58,7 @@ public class PlayerMovement : MonoBehaviour
     private Animator anim;
     private SpriteRenderer spriteRenderer; 
     private Collider2D bodyCollider; 
+    private PlayerStats playerStats; // ⭐ 플레이어 스탯 참조 추가
     
     private float moveInput;
     private bool isGrounded = true;
@@ -75,7 +76,6 @@ public class PlayerMovement : MonoBehaviour
     private float lastDashInputTime = -10f;
     private float inputBufferWindow = 0.1f; 
 
-    // ⭐ 움직이는 발판 추적용 변수들
     private Transform currentPlatform;
     private Vector3 lastPlatformPos;
     private Vector2 movingPlatformVelocity = Vector2.zero;
@@ -87,21 +87,20 @@ public class PlayerMovement : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>(); 
         bodyCollider = GetComponent<Collider2D>(); 
         audioSource = GetComponent<AudioSource>(); 
+        playerStats = GetComponent<PlayerStats>(); // ⭐ PlayerStats 컴포넌트 자동 연결
 
         defaultGravity = rb.gravityScale * jumpSnappiness;
         rb.gravityScale = defaultGravity;
-        jumpForce = jumpForce * Mathf.Sqrt(jumpSnappiness);
 
-        float g = Mathf.Abs(Physics2D.gravity.y) * defaultGravity;
-        
-        singleJumpHeight = (jumpForce * jumpForce) / (2f * g);
-        maxDoubleJumpHeight = singleJumpHeight * 2f; 
-        activeCeilingLimit = maxDoubleJumpHeight;
+        UpdateMovementStats();
     }
 
     void Update()
     {
         if (Time.timeScale == 0f) return;
+
+        // ⭐ PlayerStats의 이동속도 및 점프력 실시간 연동
+        UpdateMovementStats();
 
         CheckGrounded();
 
@@ -274,6 +273,23 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    // ⭐ PlayerStats에서 스탯을 읽어와 물리 계산 변수를 갱신하는 함수
+    private void UpdateMovementStats()
+    {
+        if (playerStats != null)
+        {
+            moveSpeed = playerStats.GetTotalMoveSpeed();
+            jumpForce = playerStats.GetTotalJumpForce() * Mathf.Sqrt(jumpSnappiness);
+        }
+
+        float g = Mathf.Abs(Physics2D.gravity.y) * defaultGravity;
+        if (g > 0f)
+        {
+            singleJumpHeight = (jumpForce * jumpForce) / (2f * g);
+            maxDoubleJumpHeight = singleJumpHeight * 2f;
+        }
+    }
+
     private void PlaySound(AudioClip clip)
     {
         if (audioSource != null && clip != null)
@@ -313,7 +329,6 @@ public class PlayerMovement : MonoBehaviour
         bool wasGrounded = isGrounded;
         isGrounded = validHit != null;
 
-        // ⭐ 핵심 수정: 어떤 물체를 밟았는지 Transform을 기억해둡니다.
         if (isGrounded)
         {
             Transform hitTransform = validHit.transform;
@@ -369,14 +384,11 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        // ⭐ 핵심 수정: 더미의 '가짜 속도(velocity)'를 믿지 않고,
-        // 이번 프레임에 실제로 몇 미터를 이동했는지 거리를 재서 속도를 구합니다.
         if (currentPlatform != null)
         {
             float deltaX = currentPlatform.position.x - lastPlatformPos.x;
             movingPlatformVelocity = new Vector2(deltaX / Time.fixedDeltaTime, 0f);
             
-            // 다음 측정을 위해 현재 좌표 저장
             lastPlatformPos = currentPlatform.position;
         }
         else

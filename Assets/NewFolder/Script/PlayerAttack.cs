@@ -3,11 +3,14 @@ using UnityEngine;
 public class PlayerAttack : MonoBehaviour
 {
     private Animator anim;
+    private PlayerStats playerStats; // ⭐ 플레이어 스탯 참조 추가
     
     [Header("공격 설정")]
     public float comboWindow = 0.5f; 
+    [Tooltip("평타 데미지 계수 (1.0 = 캐릭터 공격력 100%)")]
+    public float attackDamageMultiplier = 1.0f; // ⭐ 평타 데미지 배율 추가
     
-    [Tooltip("자식 오브젝트인 Hitbox를 여기에 끌어다 넣으세요.")]
+    [Tooltip("자식 오브젝트인 Hitbox를 여기에 끌어다 넣으세요. (비워두면 자동 탐색)")]
     public GameObject hitbox; 
     
     private HitboxDamage hitboxDamageScript;
@@ -18,11 +21,22 @@ public class PlayerAttack : MonoBehaviour
     void Start()
     {
         anim = GetComponent<Animator>();
+        playerStats = GetComponent<PlayerStats>(); // ⭐ PlayerStats 컴포넌트 자동 가져오기
         
+        // hitbox가 연결되어 있지 않다면 자식 오브젝트에서 자동으로 검색
+        if (hitbox == null)
+        {
+            HitboxDamage childHitbox = GetComponentInChildren<HitboxDamage>();
+            if (childHitbox != null)
+            {
+                hitbox = childHitbox.gameObject;
+            }
+        }
+
         if (hitbox != null) 
         {
-            hitbox.SetActive(false); 
             hitboxDamageScript = hitbox.GetComponent<HitboxDamage>(); 
+            hitbox.SetActive(false); 
         }
     }
 
@@ -66,8 +80,6 @@ public class PlayerAttack : MonoBehaviour
     {
         anim.SetTrigger("Attack"); 
         comboTimer = comboWindow; 
-        
-        // ❌ 여기서 명부를 지우면 안 됩니다! 버튼 연타 시 데미지가 중복해서 들어갑니다. (삭제 완료)
     }
 
     private void ResetCombo()
@@ -75,7 +87,6 @@ public class PlayerAttack : MonoBehaviour
         comboStep = 0;
         comboTimer = 0f;
         
-        // 혹시 공격 도중에 맞거나 끊겨서 히트박스가 켜진 채 굳어버리는 것을 방지
         DisableHitbox(); 
     }
 
@@ -84,16 +95,24 @@ public class PlayerAttack : MonoBehaviour
         ResetCombo();
     }
 
-    // ⭐ 핵심 해결 구간: "애니메이션에서 칼을 내지르는 정확한 타이밍"
+    // ⭐ 핵심 해결 구간: 애니메이션에서 히트박스가 켜지는 타이밍
     public void EnableHitbox()
     {
         if (hitbox != null) 
         {
-            // 공격 애니메이션이 모션 캔슬되어 히트박스가 켜진 채로 넘어왔을 수도 있으니,
-            // '실제로 칼이 나가는 이 순간'에만 타격 명부를 강제로 한 번 지워줍니다.
+            if (hitboxDamageScript == null)
+            {
+                hitboxDamageScript = hitbox.GetComponent<HitboxDamage>();
+            }
+
+            // ⭐ 평타를 내지를 때마다 PlayerStats의 공격력을 기반으로 데미지를 새로 설정합니다!
             if (hitboxDamageScript != null)
             {
-                hitboxDamageScript.ClearHitMemory();
+                float baseAttackDamage = (playerStats != null) ? playerStats.GetTotalAttackDamage() : 10f;
+                int finalNormalDamage = Mathf.RoundToInt(baseAttackDamage * attackDamageMultiplier);
+                
+                hitboxDamageScript.SetDamage(finalNormalDamage); // 데미지 갱신
+                hitboxDamageScript.ClearHitMemory(); // 타격 명부 초기화
             }
             
             hitbox.SetActive(true);

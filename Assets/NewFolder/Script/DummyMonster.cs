@@ -8,6 +8,10 @@ public class DummyMonster : MonoBehaviour, IDamageable
     private int currentHp;
     public int defense = 5; 
 
+    [Header("부활 설정")]
+    public float respawnTime = 3f; // ⭐ 여기서 부활 대기 시간을 맘대로 조절할 수 있습니다!
+    private bool isDead = false;   // 죽어있는 동안 중복 타격을 막기 위한 변수
+
     [Header("시각 효과 (1번 기능)")]
     public Color hitColor = Color.red;
     public float flashDuration = 0.1f;
@@ -22,40 +26,48 @@ public class DummyMonster : MonoBehaviour, IDamageable
     public float knockbackForceX = 5f;
     public float knockbackForceY = 3f;
     private Rigidbody2D rb;
+    private Collider2D col; // 충돌체(히트박스)를 끄기 위해 추가
 
     [Header("체력바 UI")]
     public HealthBar healthBar; 
 
     private Vector3 startPosition;
+    private MonsterPatrol patrolScript; // 순찰 스크립트를 잠시 끄기 위해 추가
 
     void Start()
     {
         currentHp = maxHp;
         startPosition = transform.position;
+        
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
+        col = GetComponent<Collider2D>();
+        patrolScript = GetComponent<MonsterPatrol>(); 
+
         if (sr != null) originalColor = sr.color;
 
-        // ⭐ 변경점: 시작할 때는 Update가 아닌 Initialize를 불러서 조용히 숨겨둡니다.
         if (healthBar != null) healthBar.InitializeHealth(currentHp, maxHp);
     }
 
     public void TakeDamage(int physicalDamage, int elementalDamage)
     {
+        // ⭐ 죽어있는 상태라면 데미지를 무시합니다.
+        if (isDead) return;
+
         int finalDamage = CalculateDamage(physicalDamage, elementalDamage);
         currentHp -= finalDamage;
         currentHp = Mathf.Max(0, currentHp);
 
-        // ⭐ 맞았을 때는 짠! 하고 체력바가 나타나도록 Update를 부릅니다.
         if (healthBar != null) healthBar.UpdateHealth(currentHp, maxHp);
 
         if (gameObject.activeInHierarchy) StartCoroutine(HitFlashRoutine());
         ShowDamageText(finalDamage);
         ApplyKnockback();
 
+        // ⭐ 체력이 0이 되면 죽음 처리 후 3초 대기 코루틴 실행
         if (currentHp <= 0)
         {
-            ResetDummy();
+            StartCoroutine(RespawnRoutine());
         }
     }
 
@@ -100,6 +112,34 @@ public class DummyMonster : MonoBehaviour, IDamageable
         }
     }
 
+    // ⭐ 3초 대기 후 부활시키는 핵심 코루틴
+    private IEnumerator RespawnRoutine()
+    {
+        isDead = true; // 사망 상태 진입
+
+        // 1. 더미를 화면에서 지우고 충돌과 물리를 끕니다.
+        if (sr != null) sr.enabled = false;           // 투명하게 만들기
+        if (col != null) col.enabled = false;         // 타격 판정 없애기 (V키 스킬이 더 이상 얘를 찾지 않음)
+        if (rb != null) rb.simulated = false;         // 바닥으로 떨어지지 않게 물리 정지
+        if (patrolScript != null) patrolScript.enabled = false; // 순찰 정지
+        
+        if (healthBar != null) healthBar.InitializeHealth(0, maxHp); // 체력바 숨기기
+
+        // 2. 인스펙터에 설정된 시간(기본 3초)만큼 기다립니다.
+        yield return new WaitForSeconds(respawnTime);
+
+        // 3. 체력과 위치를 초기화합니다.
+        ResetDummy();
+
+        // 4. 다시 화면에 보이고 만질 수 있게 복구합니다.
+        if (sr != null) sr.enabled = true;
+        if (col != null) col.enabled = true;
+        if (rb != null) rb.simulated = true;
+        if (patrolScript != null) patrolScript.enabled = true;
+
+        isDead = false; // 부활 완료!
+    }
+
     public void ResetDummy()
     {
         Debug.Log("더미 초기화 완료!");
@@ -108,7 +148,6 @@ public class DummyMonster : MonoBehaviour, IDamageable
         if (rb != null) rb.velocity = Vector2.zero;
         if (sr != null) sr.color = originalColor;
 
-        // ⭐ 변경점: 체력이 다 닳아서 리셋될 때도 다시 투명하게 숨어버립니다.
         if (healthBar != null) healthBar.InitializeHealth(currentHp, maxHp);
     }
 }

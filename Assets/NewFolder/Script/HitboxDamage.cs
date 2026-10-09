@@ -48,7 +48,14 @@ public class HitboxDamage : MonoBehaviour
         }
     }
 
-    // ⭐ 다른 스크립트에서 강제로 명부를 지울 수 있게 Public으로 열어둡니다.
+    // ⭐ [추가] 외부(스킬 컨트롤러 등)에서 계산된 데미지를 실시간으로 갱신하는 함수
+    public void SetDamage(int newPhysicalDamage, int newElementalDamage = 0)
+    {
+        physicalDamage = newPhysicalDamage;
+        elementalDamage = newElementalDamage;
+    }
+
+    // 다른 스크립트에서 강제로 명부를 지울 수 있게 Public으로 열어둡니다.
     public void ClearHitMemory()
     {
         alreadyHitColliders.Clear();
