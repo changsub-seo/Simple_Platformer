@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.Tilemaps;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -8,6 +9,12 @@ public class PlayerMovement : MonoBehaviour
     public float jumpForce = 7f;
     public float jumpCutMultiplier = 0.5f; 
     public float jumpSnappiness = 1.5f;
+
+    [Header("Ice Surface")]
+    [Tooltip("Horizontal acceleration while moving on IceCave tiles.")]
+    [Min(0f)] public float iceAcceleration = 12f;
+    [Tooltip("Horizontal deceleration while stopping or reversing on IceCave tiles.")]
+    [Min(0f)] public float iceDeceleration = 4.5f;
     
     [Header("Dash")]
     public float dashPower = 15f;
@@ -50,6 +57,7 @@ public class PlayerMovement : MonoBehaviour
     private bool isDashing;
     private bool isDashJumping; 
     private bool isAirDashFloating; 
+    private bool preserveIceMomentumInAir; 
 
     private int jumpCount = 0; 
     private bool canAirDash; 
@@ -62,6 +70,7 @@ public class PlayerMovement : MonoBehaviour
     
     private float moveInput;
     private bool isGrounded = true;
+    private bool isOnIce;
     private float defaultGravity; 
 
     private Coroutine dashCoroutine; 
@@ -231,6 +240,9 @@ public class PlayerMovement : MonoBehaviour
 
             if (isGrounded || coyoteCounter > 0f)
             {
+                preserveIceMomentumInAir = isGrounded && isOnIce &&
+                    Mathf.Abs(rb.velocity.x - movingPlatformVelocity.x) > 0.1f;
+
                 if (isDashing)
                 {
                     StopCoroutine(dashCoroutine); 
@@ -300,15 +312,20 @@ public class PlayerMovement : MonoBehaviour
 
     private Collider2D GetPiercingCollider(Vector2 start, Vector2 dir, float length)
     {
+        return GetPiercingHit(start, dir, length).collider;
+    }
+
+    private RaycastHit2D GetPiercingHit(Vector2 start, Vector2 dir, float length)
+    {
         RaycastHit2D[] hits = Physics2D.RaycastAll(start, dir, length);
         foreach (RaycastHit2D hit in hits)
         {
             if (hit.collider != null && hit.collider.gameObject != gameObject && !hit.collider.isTrigger)
             {
-                return hit.collider;
+                return hit;
             }
         }
-        return null; 
+        return default;
     }
 
     private void CheckGrounded()
@@ -320,18 +337,20 @@ public class PlayerMovement : MonoBehaviour
         Vector2 rightFoot = new Vector2(bodyCollider.bounds.max.x - 0.1f, startY);
         Vector2 centerFoot = new Vector2(bodyCollider.bounds.center.x, startY); 
         
-        Collider2D leftHit = GetPiercingCollider(leftFoot, Vector2.down, rayLength);
-        Collider2D rightHit = GetPiercingCollider(rightFoot, Vector2.down, rayLength);
-        Collider2D centerHit = GetPiercingCollider(centerFoot, Vector2.down, rayLength);
+        RaycastHit2D leftHit = GetPiercingHit(leftFoot, Vector2.down, rayLength);
+        RaycastHit2D rightHit = GetPiercingHit(rightFoot, Vector2.down, rayLength);
+        RaycastHit2D centerHit = GetPiercingHit(centerFoot, Vector2.down, rayLength);
         
-        Collider2D validHit = centerHit != null ? centerHit : (leftHit != null ? leftHit : rightHit);
+        RaycastHit2D validHit = centerHit.collider != null ? centerHit :
+            (leftHit.collider != null ? leftHit : rightHit);
         
         bool wasGrounded = isGrounded;
-        isGrounded = validHit != null;
+        isGrounded = validHit.collider != null;
+        isOnIce = isGrounded && IsIceSurface(validHit);
 
         if (isGrounded)
         {
-            Transform hitTransform = validHit.transform;
+            Transform hitTransform = validHit.collider.transform;
             if (currentPlatform != hitTransform)
             {
                 currentPlatform = hitTransform;
@@ -361,11 +380,26 @@ public class PlayerMovement : MonoBehaviour
             
             isDashJumping = false; 
             isAirDashFloating = false; 
+            preserveIceMomentumInAir = false;
             jumpCount = 0; 
             canAirDash = true; 
             activeCeilingLimit = maxDoubleJumpHeight; 
             colorIndex = 0;        
         }
+    }
+
+    private bool IsIceSurface(RaycastHit2D groundHit)
+    {
+        Tilemap tilemap = groundHit.collider.GetComponent<Tilemap>();
+        if (tilemap == null) tilemap = groundHit.collider.GetComponentInParent<Tilemap>();
+        if (tilemap == null) return false;
+
+        // Sample just inside the collider surface. On a flat tilemap floor, the hit
+        // point lies on the tile's top edge, so sampling upward would select the
+        // empty cell above the tile.
+        Vector3 samplePoint = groundHit.point - (Vector2)groundHit.normal * 0.02f;
+        TileBase tile = tilemap.GetTile(tilemap.WorldToCell(samplePoint));
+        return tile is IceCaveTile;
     }
 
     private void EndDashEarly()
@@ -412,8 +446,31 @@ public class PlayerMovement : MonoBehaviour
 
         float targetVelocityX = (moveInput * currentSpeed) + movingPlatformVelocity.x;
 
-        if (IsTouchingWall(moveInput)) rb.velocity = new Vector2(0f, rb.velocity.y);
-        else rb.velocity = new Vector2(targetVelocityX, rb.velocity.y);
+        if (IsTouchingWall(moveInput))
+        {
+            rb.velocity = new Vector2(0f, rb.velocity.y);
+        }
+        else if (!isGrounded && preserveIceMomentumInAir)
+        {
+            // Keep momentum from an ice launch while airborne. Normal-ground
+            // dashes use regular input-driven movement and stop when input is released.
+            if (moveInput != 0f)
+            {
+                rb.velocity = new Vector2(targetVelocityX, rb.velocity.y);
+            }
+        }
+        else if (isOnIce && isGrounded)
+        {
+            bool isBrakingOrReversing = moveInput == 0f ||
+                Mathf.Sign(moveInput) != Mathf.Sign(rb.velocity.x - movingPlatformVelocity.x);
+            float acceleration = isBrakingOrReversing ? iceDeceleration : iceAcceleration;
+            float nextVelocityX = Mathf.MoveTowards(rb.velocity.x, targetVelocityX, acceleration * Time.fixedDeltaTime);
+            rb.velocity = new Vector2(nextVelocityX, rb.velocity.y);
+        }
+        else
+        {
+            rb.velocity = new Vector2(targetVelocityX, rb.velocity.y);
+        }
 
         if (isGrounded && rb.velocity.y > 0 && jumpCount == 0 && !isDashing)
         {
@@ -449,6 +506,8 @@ public class PlayerMovement : MonoBehaviour
         rb.gravityScale = 0f; 
         currentDashDir = dashDir; 
         rb.velocity = dashDir * dashPower;
+        preserveIceMomentumInAir = isOnIce &&
+            Mathf.Abs(rb.velocity.x - movingPlatformVelocity.x) > 0.1f;
 
         float actualDashTime = dashTime;
         if (dashDir.y > 0) actualDashTime = dashTime * upDashTimeMultiplier;

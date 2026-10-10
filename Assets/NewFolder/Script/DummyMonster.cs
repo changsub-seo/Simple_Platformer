@@ -9,8 +9,13 @@ public class DummyMonster : MonoBehaviour, IDamageable
     public int defense = 5; 
 
     [Header("부활 설정")]
-    public float respawnTime = 3f; // ⭐ 여기서 부활 대기 시간을 맘대로 조절할 수 있습니다!
+    [Tooltip("체력이 0이 된 적을 자동으로 다시 생성합니다.")]
+    public bool autoRespawn = true;
+    [Min(0f)]
+    [Tooltip("자동 재생성까지 기다리는 시간(초)입니다.")]
+    public float respawnTime = 3f;
     private bool isDead = false;   // 죽어있는 동안 중복 타격을 막기 위한 변수
+    public bool IsDead => isDead;
 
     [Header("시각 효과 (1번 기능)")]
     public Color hitColor = Color.red;
@@ -64,7 +69,7 @@ public class DummyMonster : MonoBehaviour, IDamageable
         ShowDamageText(finalDamage);
         ApplyKnockback();
 
-        // ⭐ 체력이 0이 되면 죽음 처리 후 3초 대기 코루틴 실행
+        // 체력이 0이 되면 사망 처리 후 설정에 따라 재생성합니다.
         if (currentHp <= 0)
         {
             StartCoroutine(RespawnRoutine());
@@ -112,7 +117,7 @@ public class DummyMonster : MonoBehaviour, IDamageable
         }
     }
 
-    // ⭐ 3초 대기 후 부활시키는 핵심 코루틴
+    // 자동 재생성이 꺼져 있으면 사망 상태와 비활성 상태를 유지합니다.
     private IEnumerator RespawnRoutine()
     {
         isDead = true; // 사망 상태 진입
@@ -125,7 +130,9 @@ public class DummyMonster : MonoBehaviour, IDamageable
         
         if (healthBar != null) healthBar.InitializeHealth(0, maxHp); // 체력바 숨기기
 
-        // 2. 인스펙터에 설정된 시간(기본 3초)만큼 기다립니다.
+        if (!autoRespawn) yield break;
+
+        // 인스펙터에 설정된 시간만큼 기다립니다.
         yield return new WaitForSeconds(respawnTime);
 
         // 3. 체력과 위치를 초기화합니다.

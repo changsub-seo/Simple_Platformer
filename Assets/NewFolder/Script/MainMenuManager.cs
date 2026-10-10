@@ -15,6 +15,7 @@ public class MainMenuManager : MonoBehaviour
 
     public void GameStart()
     {
+        PlayerLifeSystem.ResetForNewGame();
         // 일반 로딩 대신, 암전이 포함된 비동기 로딩 코루틴을 시작합니다!
         StartCoroutine(LoadGameSceneWithFade());
     }
@@ -32,7 +33,7 @@ public class MainMenuManager : MonoBehaviour
         yield return StartCoroutine(Fade(0f)); // 알파값을 0(투명)으로 만듦
 
         // 4. 비동기(Async) 맵 로딩 시작
-        AsyncOperation op = SceneManager.LoadSceneAsync("GameScene");
+        AsyncOperation op = SceneManager.LoadSceneAsync("Stage1Scene");
         op.allowSceneActivation = false; 
 
         while (!op.isDone)

@@ -17,6 +17,7 @@ MonoBehaviour:
   skillIcon: {fileID: 0}
   damageType: 0
   damageMultiplier: 1.5
+  manaCost: 2
   damage: 10
   cooldown: 3
   animTriggerName: Whiteray_Attack01

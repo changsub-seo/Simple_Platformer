@@ -29,6 +29,10 @@ public class SkillData : ScriptableObject
     public float speedMultiplier = 1.0f;        // ⭐ [추가] 캐릭터 공속 반영 비율
 
     [Header("전투 수치 및 쿨타임")]
+    [Min(0)]
+    [Tooltip("스킬을 시작할 때 한 번 소모할 마나량입니다.")]
+    public float manaCost = 10f;
+
     public float cooldown = 3f;                 // 재사용 대기시간(초)
 
     [Header("애니메이션 & 시각 효과")]

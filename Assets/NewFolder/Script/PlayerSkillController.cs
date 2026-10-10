@@ -76,6 +76,9 @@ public class PlayerSkillController : MonoBehaviour
         Transform initialTarget = FindClosestEnemy();
         if (initialTarget == null) yield break; 
 
+        if (playerStats == null) playerStats = GetComponent<PlayerStats>();
+        if (playerStats == null) yield break;
+
         isTeleportAttacking = true;
         currentCooldown = skillCooldown; 
 
@@ -126,6 +129,7 @@ public class PlayerSkillController : MonoBehaviour
         {
             Transform target = FindClosestEnemy();
             if (target == null) break;
+            if (!playerStats.TrySpendMana(skill.manaCost)) break;
 
             Vector3 targetPos = target.position + new Vector3(sideMultiplier * teleportOffset, 0f, 0f);
             transform.position = targetPos;

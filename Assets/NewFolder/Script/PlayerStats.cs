@@ -1,7 +1,7 @@
 using UnityEngine;
 using TMPro;
 
-public class PlayerStats : MonoBehaviour
+public class PlayerStats : MonoBehaviour, IDamageable
 {
     [Header("기초 스탯 (Primary Stats)")]
     public int strength = 10;     
@@ -54,6 +54,7 @@ public class PlayerStats : MonoBehaviour
     public float manaRegenRate = 2f; 
 
     private EquipmentManager equipmentManager;
+    private bool isDead;
 
     void Start()
     {
@@ -185,17 +186,61 @@ public class PlayerStats : MonoBehaviour
 
     public void TakeDamage(int physicalDamage, int elementalDamage)
     {
+        if (currentHealth <= 0) return;
+
         int finalPhysical = Mathf.Max(0, physicalDamage - GetTotalDefense());
         int finalElemental = Mathf.Max(0, elementalDamage - currentTotalResistance);
         
         int totalDamage = finalPhysical + finalElemental;
-        currentHealth -= totalDamage;
+        currentHealth = Mathf.Max(0, currentHealth - totalDamage);
 
         if (currentHealth <= 0) Die();
     }
 
+    public bool TrySpendMana(float amount)
+    {
+        if (amount <= 0f) return true;
+        if (currentMana < amount) return false;
+
+        currentMana -= amount;
+        return true;
+    }
+
+    public void DieFromFall()
+    {
+        if (isDead) return;
+
+        currentHealth = 0;
+        Die();
+    }
+
     private void Die()
     {
+        if (isDead) return;
+        isDead = true;
+
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+        if (movement != null) movement.enabled = false;
+
+        PlayerAttack attack = GetComponent<PlayerAttack>();
+        if (attack != null)
+        {
+            attack.DisableHitbox();
+            attack.enabled = false;
+        }
+
+        PlayerSkillController skillController = GetComponent<PlayerSkillController>();
+        if (skillController != null) skillController.enabled = false;
+
+        Rigidbody2D body = GetComponent<Rigidbody2D>();
+        if (body != null)
+        {
+            body.velocity = Vector2.zero;
+            body.simulated = false;
+        }
+
         Debug.Log("플레이어 사망!");
+        int remainingLives = PlayerLifeSystem.LoseLife();
+        GameOverUI.Show(remainingLives);
     }
 }
